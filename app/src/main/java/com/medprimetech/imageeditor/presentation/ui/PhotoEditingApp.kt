@@ -4,6 +4,7 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -19,6 +20,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
@@ -26,6 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.medprimetech.imageeditor.domain.model.FilterSettings
+import com.medprimetech.imageeditor.presentation.component.FilterControl
 import com.medprimetech.imageeditor.presentation.viewmodel.PhotoEditorViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -60,7 +64,7 @@ fun PhotoEditingApp(
                 ) {
                     Icon(Icons.Default.Image, contentDescription = "Select Image")
                 }
-                if (bitmap != null) {
+                if (activeFilter != null) {
                     FloatingActionButton(
                         onClick = {
                             filteredBitmap?.let {
@@ -72,6 +76,7 @@ fun PhotoEditingApp(
                     ) {
                         Icon(Icons.Default.Save, contentDescription = "Save Image")
                     }
+                    Spacer(modifier = Modifier.height(200.dp))
                 }
             }
         }
@@ -99,12 +104,39 @@ fun PhotoEditingApp(
                         )
                     }
                     filteredBitmap != null -> {
-                        Image(
-                            bitmap = filteredBitmap.asImageBitmap(),
-                            contentDescription = null,
-                            modifier = Modifier.fillMaxSize(),
-                            alignment = Alignment.Center
-                        )
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            // Base image
+                            Image(
+                                bitmap = filteredBitmap.asImageBitmap(),
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .drawBehind {
+                                        drawRect(
+                                            brush = Brush.verticalGradient(
+                                                colors = listOf(Color.Transparent, Color.Black)
+                                            )
+                                        )
+                                    },
+                                alignment = Alignment.Center
+                            )
+
+                            // Drawing canvas overlay
+                            Canvas(
+                                modifier = Modifier
+                                    .matchParentSize() // ensure it covers the image
+                                    .background(Color.Transparent) // keep it see-through
+                            ) {
+                                // Example: drawing something
+                                drawCircle(
+                                    color = Color.Red,
+                                    radius = 50f,
+                                    center = center
+                                )
+
+                                // later replace with your DrawingCanvas() composable
+                            }
+                        }
                     }
                 }
             }
@@ -162,73 +194,5 @@ fun PhotoEditingApp(
                 }
             }
         }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun FilterControl(
-    name: String,
-    value: Float,
-    min: Float,
-    max: Float,
-    onValueChange: (Float) -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 12.dp, horizontal = 16.dp)
-            .background(Color(0xFF1E1E1E), shape = RoundedCornerShape(12.dp))
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        // Label + value row
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = name,
-                fontSize = 14.sp,
-                color = Color(0xFFCCCCCC)
-            )
-            Text(
-                text = "%.2f".format(value),
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Slider
-        Slider(
-            modifier = Modifier.fillMaxWidth(),
-            value = value,
-            onValueChange = onValueChange,
-            valueRange = min..max,
-            colors = SliderDefaults.colors(
-                thumbColor = Color.White,
-                activeTrackColor = Color(0xFF4CAF50),
-                inactiveTrackColor = Color(0xFF555555)
-            ),
-            thumb = {
-                Icon(
-                    imageVector = Icons.Default.Circle,
-                    contentDescription = null,
-                    tint = Color.White
-                )
-            },
-            track = {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(4.dp)
-                        .background(Color(0xFF4CAF50))
-                )
-            },
-        )
     }
 }
