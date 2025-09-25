@@ -4,9 +4,6 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
 import androidx.compose.ui.Modifier
 import com.medprimetech.imageeditor.app.theme.ImageEditorTheme
 import com.medprimetech.imageeditor.presentation.ui.PhotoEditingApp
@@ -20,11 +17,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             ImageEditorTheme {
                 val viewModel: PhotoEditorViewModel = koinViewModel()
-                Scaffold(
-                    modifier = Modifier.fillMaxSize(),
-                ) { innerPadding ->
-                    PhotoEditingApp(viewModel, modifier = Modifier.padding(innerPadding))
-                }
+                PhotoEditingApp(viewModel, modifier = Modifier)
             }
         }
     }

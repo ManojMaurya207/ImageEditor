@@ -1,12 +1,16 @@
 package com.medprimetech.imageeditor.presentation.ui
 
+import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
+import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -20,6 +24,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -39,46 +44,46 @@ fun PhotoEditingApp(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val bitmap by remember { derivedStateOf { viewModel.bitmap } }
     var activeFilter by remember { mutableStateOf<String?>(null) }
-
     val launcher = rememberLauncherForActivityResult(
         ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let { viewModel.loadBitmap(it, context) }
     }
-
-    val bitmap = viewModel.bitmap
-    val filteredBitmap = viewModel.applyFilters()
+    // Handle share intent once when app starts
+    LaunchedEffect(Unit) {
+        val intent = (context as? ComponentActivity)?.intent
+        intent?.let { handleIncomingIntent(it, viewModel, context) }
+    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = Color.Black,
-        floatingActionButton = {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                horizontalAlignment = Alignment.End
-            ) {
-                FloatingActionButton(
-                    onClick = { launcher.launch("image/*") },
-                    containerColor = MaterialTheme.colorScheme.primary
-                ) {
-                    Icon(Icons.Default.Image, contentDescription = "Select Image")
-                }
-                if (activeFilter != null) {
-                    FloatingActionButton(
-                        onClick = {
-                            filteredBitmap?.let {
+        topBar = {
+            TopAppBar(
+                title = { Text("Image Editor", color = Color.White) },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color(0xFF1C1C1E)
+                ),
+                actions = {
+//                    IconButton(onClick = {
+//                        launcher.launch("image/*")
+//                    }) {
+//                        Icon(Icons.Default.Image, contentDescription = "Select Image", tint = Color.White)
+//                    }
+                    if (bitmap != null) {
+                        IconButton(onClick = {
+                            viewModel.applyFilters()?.let {
                                 viewModel.saveBitmap(context, it)
                                 Toast.makeText(context, "Image saved", Toast.LENGTH_SHORT).show()
                             }
-                        },
-                        containerColor = MaterialTheme.colorScheme.secondary
-                    ) {
-                        Icon(Icons.Default.Save, contentDescription = "Save Image")
+                        }) {
+                            Icon(Icons.Default.Save, contentDescription = "Save Image", tint = Color.White)
+                        }
                     }
-                    Spacer(modifier = Modifier.height(200.dp))
                 }
-            }
+            )
         }
     ) { padding ->
         Column(
@@ -94,65 +99,61 @@ fun PhotoEditingApp(
                     .background(Color.Black),
                 contentAlignment = Alignment.Center
             ) {
-                when {
-                    bitmap == null -> {
-                        Icon(
-                            Icons.Default.Image,
-                            contentDescription = null,
-                            modifier = Modifier.size(120.dp),
-                            tint = Color.Gray
-                        )
-                    }
-                    filteredBitmap != null -> {
-                        Box(modifier = Modifier.fillMaxSize()) {
-                            // Base image
-                            Image(
-                                bitmap = filteredBitmap.asImageBitmap(),
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .drawBehind {
-                                        drawRect(
-                                            brush = Brush.verticalGradient(
-                                                colors = listOf(Color.Transparent, Color.Black)
-                                            )
-                                        )
-                                    },
-                                alignment = Alignment.Center
-                            )
-
-                            // Drawing canvas overlay
-                            Canvas(
-                                modifier = Modifier
-                                    .matchParentSize() // ensure it covers the image
-                                    .background(Color.Transparent) // keep it see-through
-                            ) {
-                                // Example: drawing something
-                                drawCircle(
-                                    color = Color.Red,
-                                    radius = 50f,
-                                    center = center
+                if (bitmap == null) {
+                    Button(
+                        onClick = { launcher.launch("image/*") },
+                        modifier = Modifier
+                            .height(48.dp)
+                            .fillMaxWidth(0.5f)
+                            .clip(RoundedCornerShape(12.dp)),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.Transparent
+                        ),
+                        contentPadding = PaddingValues()
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .background(
+                                    brush = Brush.horizontalGradient(
+                                        colors = listOf(Color(0xFFFFD700), Color(0xFFFF4500)) // Yellow → Red
+                                    ),
+                                    shape = RoundedCornerShape(12.dp)
                                 )
-
-                                // later replace with your DrawingCanvas() composable
-                            }
+                                .fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Select Image",
+                                fontSize = 16.sp,
+                                color = Color.White,
+                                fontWeight = FontWeight.Medium
+                            )
                         }
+                    }
+
+                } else {
+                    viewModel.applyFilters()?.let { filtered ->
+                        Image(
+                            bitmap = filtered.asImageBitmap(),
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            alignment = Alignment.Center
+                        )
                     }
                 }
             }
 
-            // --- Filter Toolbar ---
-            if (bitmap != null) {
+            // --- Filter Controls ---
+            bitmap?.let {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Color(0xFF1C1C1E))
-                        .padding(vertical = 12.dp),
+                        .background(Color(0xFF1C1C1E)),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // --- Active Filter Slider ---
+                    // Slider for active filter (toggle visibility)
                     activeFilter?.let { filter ->
-                        Spacer(Modifier.height(16.dp))
+                        Spacer(Modifier.height(8.dp))
                         val currentSettings = viewModel.filterSettings
                         FilterControl(
                             name = filter,
@@ -176,23 +177,51 @@ fun PhotoEditingApp(
                                 }
                             )
                         }
+                        Spacer(Modifier.height(6.dp))
                     }
 
+                    // Filter Chips
+                    val filters = listOf("Brightness", "Contrast", "Saturation", "Exposure")
                     LazyRow(
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                         contentPadding = PaddingValues(horizontal = 16.dp)
                     ) {
-                        val filters = listOf("Brightness", "Contrast", "Saturation", "Exposure")
                         items(filters) { filter ->
                             FilterChip(
                                 selected = activeFilter == filter,
-                                onClick = { activeFilter = filter },
-                                label = { Text(filter, color = Color.White) }
+                                onClick = {
+                                    activeFilter = if (activeFilter == filter) null else filter
+                                },
+                                label = {
+                                    Text(filter, color = Color.White, fontWeight = FontWeight.Medium)
+                                },
+                                shape = RoundedCornerShape(50),
+                                colors = FilterChipDefaults.filterChipColors(
+                                    containerColor = Color.DarkGray,
+                                    selectedContainerColor = MaterialTheme.colorScheme.primary
+                                )
                             )
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+private fun handleIncomingIntent(
+    intent: Intent,
+    viewModel: PhotoEditorViewModel,
+    context: Context
+) {
+    when (intent.action) {
+        Intent.ACTION_SEND -> {
+            val uri = intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
+            uri?.let { viewModel.loadBitmap(it, context) }
+        }
+        Intent.ACTION_SEND_MULTIPLE -> {
+            val uris = intent.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM)
+            uris?.firstOrNull()?.let { viewModel.loadBitmap(it, context) }
         }
     }
 }
